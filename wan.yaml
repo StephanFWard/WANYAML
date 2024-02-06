@@ -1,0 +1,40 @@
+- name: Configure WAN and Security for Customer Networks
+  hosts: wan_devices
+  tasks:
+    - name: Configure BGP routing for WAN connectivity
+      ios_config:
+        lines:
+          - router bgp 65000
+          - neighbor 192.168.1.1 remote-as 65001
+          - network 10.0.0.0 mask 255.255.255.0
+      register: bgp_config
+
+    - name: Configure OSPF routing for WAN connectivity
+      ios_config:
+        lines:
+          - router ospf 1
+          - network 192.168.0.0 0.0.255.255 area 0
+      register: ospf_config
+
+    # Additional tasks for WAN security and integration
+    - name: Configure VPN for secure WAN connections
+      ios_config:
+        lines:
+          - crypto isakmp policy 10
+          - encryption aes
+          - authentication pre-share
+          - group 5
+          - exit
+          - crypto isakmp key StrongPassword address 0.0.0.0
+          - crypto ipsec transform-set VPN-SET esp-aes esp-sha-hmac
+          - crypto map VPN-MAP 10 ipsec-isakmp
+          - set peer 203.0.113.2
+          - set transform-set VPN-SET
+          - match address VPN-TRAFFIC
+      register: vpn_config
+
+    - name: Configure ACL for VPN traffic
+      ios_config:
+        lines:
+          - access-list 101 permit ip 10.0.0.0 0.0.0.255 192.168.0.0 0.0.255.255
+      register: acl_config
